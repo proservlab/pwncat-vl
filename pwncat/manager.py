@@ -163,7 +163,9 @@ class Listener(threading.Thread):
 
         return self._channel_queue.qsize()
 
-    def iter_sessions(self, count: Optional[int] = None) -> Generator["Session", None, None]:
+    def iter_sessions(
+        self, count: Optional[int] = None
+    ) -> Generator["Session", None, None]:
         """
         Synchronously iterate over new sessions. This generated will
         yield sessions until no more sessions are found on the queue.
@@ -187,7 +189,9 @@ class Listener(threading.Thread):
             except queue.Empty:
                 return
 
-    def iter_channels(self, count: Optional[int] = None) -> Generator["Channel", None, None]:
+    def iter_channels(
+        self, count: Optional[int] = None
+    ) -> Generator["Channel", None, None]:
         """
         Synchronously iterate over new channels. This generated will
         yield channels until no more channels are found on the queue.
@@ -238,7 +242,10 @@ class Listener(threading.Thread):
             if self.count is not None and self.count <= 0:
                 raise ListenerError("listener max connections reached")
 
-            if self.manager.target is not None and self.manager.target.platform.interactive:
+            if (
+                self.manager.target is not None
+                and self.manager.target.platform.interactive
+            ):
                 # Throw a newline out there to clear up the output a bit
                 print("\r", end="\n")
 
@@ -373,7 +380,9 @@ class Listener(threading.Thread):
 
         # Create a listener
         try:
-            server = socket.create_server(self.address, reuse_port=True, backlog=self.count)
+            server = socket.create_server(
+                self.address, reuse_port=True, backlog=self.count
+            )
 
             return server
         except socket.error as exc:
@@ -394,7 +403,9 @@ class Listener(threading.Thread):
 
         if self.ssl_cert is None or self.ssl_key is None:
             with tempfile.NamedTemporaryFile("wb", delete=False) as filp:
-                self.manager.log(f"generating self-signed certificate at {repr(filp.name)}")
+                self.manager.log(
+                    f"generating self-signed certificate at {repr(filp.name)}"
+                )
 
                 key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
                 filp.write(
@@ -410,7 +421,9 @@ class Listener(threading.Thread):
                     [
                         x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
                         x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
-                        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "California"),
+                        x509.NameAttribute(
+                            NameOID.STATE_OR_PROVINCE_NAME, "California"
+                        ),
                         x509.NameAttribute(NameOID.LOCALITY_NAME, "San Francisco"),
                         x509.NameAttribute(NameOID.ORGANIZATION_NAME, "My Company"),
                         x509.NameAttribute(NameOID.COMMON_NAME, "mysite.com"),
@@ -423,7 +436,9 @@ class Listener(threading.Thread):
                     .public_key(key.public_key())
                     .serial_number(x509.random_serial_number())
                     .not_valid_before(datetime.datetime.utcnow())
-                    .not_valid_after(datetime.datetime.utcnow() + datetime.timedelta(days=365))
+                    .not_valid_after(
+                        datetime.datetime.utcnow() + datetime.timedelta(days=365)
+                    )
                     .add_extension(
                         x509.SubjectAlternativeName([x509.DNSName("localhost")]),
                         critical=False,
@@ -592,7 +607,9 @@ class Session:
         """Locate a user object by name or ID"""
 
         for group in self.run("enumerate.gather", progress=False, types=["group"]):
-            if (gid is None or group.id == gid) and (name is None or group.name == name):
+            if (gid is None or group.id == gid) and (
+                name is None or group.name == name
+            ):
                 return group
 
     def iter_groups(self, members: Optional[List[Union[str, int]]] = None):
@@ -646,7 +663,10 @@ class Session:
             base = pwncat.modules.BaseModule
 
         for name, module in self.manager.modules.items():
-            if module.PLATFORM is not None and type(self.platform) not in module.PLATFORM:
+            if (
+                module.PLATFORM is not None
+                and type(self.platform) not in module.PLATFORM
+            ):
                 continue
             if not issubclass(type(module), base):
                 continue
@@ -658,7 +678,11 @@ class Session:
                 ):
                     yield module
             elif exact:
-                if name == pattern or name == f"agnostic.{pattern}" or name == f"{self.platform.name}.{pattern}":
+                if (
+                    name == pattern
+                    or name == f"agnostic.{pattern}"
+                    or name == f"{self.platform.name}.{pattern}"
+                ):
                     yield module
 
     def log(self, *args, **kwargs):
@@ -760,7 +784,9 @@ class Session:
             self.platform.exit()
             self.platform.channel.close()
         except (PlatformError, ChannelError) as exc:
-            self.log(f"[yellow]warning[/yellow]: unexpected exception while closing: {exc}")
+            self.log(
+                f"[yellow]warning[/yellow]: unexpected exception while closing: {exc}"
+            )
 
         self.died()
 
@@ -908,7 +934,9 @@ class Manager:
         take its place in the module list. This includes built-in modules.
         """
 
-        for finder, module_name, is_pkg in pkgutil.walk_packages(paths, prefix="pwncat.modules."):
+        for finder, module_name, is_pkg in pkgutil.walk_packages(
+            paths, prefix="pwncat.modules."
+        ):
             # Already loaded — reuse it
             if module_name in sys.modules:
                 module = sys.modules[module_name]
@@ -1004,13 +1032,17 @@ class Manager:
                     self.parser.run()
                 except InteractiveExit:
 
-                    if self.sessions and not confirm("There are active sessions. Are you sure?"):
+                    if self.sessions and not confirm(
+                        "There are active sessions. Are you sure?"
+                    ):
                         continue
 
                     cancel = False
 
                     for listener in self.listeners:
-                        if listener.pending and not confirm("There are pending channels. Are you sure?"):
+                        if listener.pending and not confirm(
+                            "There are pending channels. Are you sure?"
+                        ):
                             cancel = True
                             break
                         elif listener.pending:
@@ -1030,7 +1062,9 @@ class Manager:
                 interactive_complete = threading.Event()
                 output_thread = None
 
-                def output_thread_main(target: Session, exception_queue: queue.SimpleQueue):
+                def output_thread_main(
+                    target: Session, exception_queue: queue.SimpleQueue
+                ):
 
                     while not interactive_complete.is_set():
                         try:
@@ -1057,7 +1091,9 @@ class Manager:
                     self.target.platform.interactive = True
 
                     exception_queue = queue.Queue(maxsize=1)
-                    output_thread = threading.Thread(target=output_thread_main, args=[self.target, exception_queue])
+                    output_thread = threading.Thread(
+                        target=output_thread_main, args=[self.target, exception_queue]
+                    )
                     output_thread.start()
 
                     try:
@@ -1072,7 +1108,9 @@ class Manager:
 
                     self.target.platform.interactive = False
                 except ChannelClosed:
-                    self.log(f"[yellow]warning[/yellow]: {self.target.platform}: connection reset")
+                    self.log(
+                        f"[yellow]warning[/yellow]: {self.target.platform}: connection reset"
+                    )
                     self.target.died()
                 finally:
                     interactive_complete.set()
